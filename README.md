@@ -1,7 +1,7 @@
 # 🐋 headroom-eval-cli
 
-Interactive ASCII TUI for the [Headroom Eval Space](https://huggingface.co/spaces/PeetPedro/headroom-eval).
-Live status, animated dodecahedron, steganography.
+Interactive pure-ASCII TUI for the [Headroom Eval Space](https://huggingface.co/spaces/PeetPedro/headroom-eval).
+Live status, animated ASCII dodecahedron, steganography, genesis seal.
 
 ## Install
 
@@ -10,42 +10,35 @@ go install github.com/peterlodri-sec/headroom-eval-cli@latest
 headroom-eval
 ```
 
-## Features
-
-- **Live Space status** — polls HF API every 3s
-- **Animated ASCII dodecahedron** — two-frame animation
-- **Steganography** — press `s` to reveal hidden message
-- **Genesis seal** — cryptographic hash of the binary
-- **Quick links** — open Space, paper, LoopKit from TUI
-
 ## Keys
 
 | Key | Action |
 |---|---|
-| `r` | Refresh status |
+| `r` | Refresh Space status |
 | `o` | Open Space in browser |
 | `p` | Open paper (kompress.vaked.dev) |
-| `g` | Open LoopKit repo |
+| `g` | Open LoopKit |
+| `d` | Sponsor/donate |
 | `s` | Toggle steganography |
 | `q` | Quit |
 
-## CLI Flags
+## Flags
 
 ```bash
-headroom-eval --seal      # print genesis hash
-headroom-eval --version   # print version + build time
+headroom-eval --seal     # genesis hash
+headroom-eval --version  # version + build time
 ```
 
-## Build from source
-
-```bash
-git clone https://github.com/peterlodri-sec/headroom-eval-cli
-cd headroom-eval-cli
-make build-upx   # → 2.6MB binary
-```
-
-## Part of
+## Links
 
 - [Headroom Eval Space](https://huggingface.co/spaces/PeetPedro/headroom-eval)
-- [LoopKit](https://github.com/peterlodri-sec/loopkit)
 - [kompress paper (ICLR 2027)](https://kompress.vaked.dev)
+- [LoopKit](https://github.com/peterlodri-sec/loopkit)
+- [pocoo.vaked.dev](https://pocoo.vaked.dev)
+- [Sponsor](https://github.com/sponsors/peterlodri-sec)
+
+## Build
+
+```bash
+make build-upx   # 2.6MB binary
+```

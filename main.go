@@ -25,23 +25,49 @@ var (
 	subtle  = lipgloss.NewStyle().Foreground(dim)
 	success = lipgloss.NewStyle().Foreground(okC)
 	failure = lipgloss.NewStyle().Foreground(errC)
-	hidden  = lipgloss.NewStyle().Foreground(lipgloss.Color("#0a0a12")) // steganographic — same as bg
+	hidden  = lipgloss.NewStyle().Foreground(lipgloss.Color("#0a0a12"))
 
-	// Genesis seal — embedded at build time via -ldflags
 	Version   = "dev"
 	Seal      = "genesis"
 	BuildTime = "unknown"
 )
 
-// Hidden ASCII art — rendered in background color (steganographic)
-// Visible only when terminal bg mismatches or on copy-paste
-var stegoArt = strings.Repeat(" ", 4) + hidden.Render(strings.Join([]string{
-	"░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░",
-	"░░  loopkit · kompress-v8 · iclr 2027  ░░",
-	"░░  the loop shipped. the paradox is proven.  ░░",
-	"░░  label quality is the bottleneck.  ░░",
-	"░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░",
-}, "\n"+strings.Repeat(" ", 4)))
+// Pure ASCII banner — no Unicode, works everywhere
+var asciiBanner = strings.Join([]string{
+	"    _    _                _                                   _",
+	"   | |  | |              | |                                 | |",
+	"   | |__| | ___  __ _  __| |_ __ ___   ___  _ __      ___   | |",
+	"   |  __  |/ _ \\/ _` |/ _` | '__/ _ \\ / _ \\| '_ \\    / _ \\  | |",
+	"   | |  | |  __/ (_| | (_| | | | (_) | (_) | | | |  |  __/  | |",
+	"   |_|  |_|\\___|\\__,_|\\__,_|_|  \\___/ \\___/|_| |_|   \\___|  |_|",
+	"",
+	"   headroom eval · hill climbing loop · iclr 2027",
+	"   github.com/peterlodri-sec · pocoo.vaked.dev",
+	"", "",
+}, "\n")
+
+var bannerFrames = []string{
+	strings.Join([]string{
+		"       +--------+        +--------+",
+		"      / \\      / \\      / \\      / \\",
+		"     /   \\    /   \\    /   \\    /   \\",
+		"    /     \\  /     \\  /     \\  /     \\",
+		"    \\     /  \\     /  \\     /  \\     /",
+		"     \\   /    \\   /    \\   /    \\   /",
+		"      \\ /      \\ /      \\ /      \\ /",
+		"       +--------+        +--------+",
+	}, "\n"),
+	strings.Join([]string{
+		"       +--------+        +--------+",
+		"      / \\      / \\      /        \\/ \\",
+		"     /   \\    /   \\    /          /   \\",
+		"    /     \\  /     \\  /          /     \\",
+		"    \\     /  \\     /  \\          \\     /",
+		"     \\   /    \\   /    \\          \\   /",
+		"      \\ /      \\ /      \\        / \\ /",
+		"       +--------+        +--------+",
+	}, "\n"),
+}
 
 type model struct {
 	spaceStatus string
@@ -110,18 +136,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			openURL("https://kompress.vaked.dev")
 		case "g":
 			openURL("https://github.com/peterlodri-sec/loopkit")
+		case "d":
+			openURL("https://github.com/sponsors/peterlodri-sec")
 		case "s":
-			m.showStego = !m.showStego // toggle steganography visibility
+			m.showStego = !m.showStego
 		}
 	}
 	return m, nil
 }
 
 func openURL(url string) {
-	fmt.Fprintf(os.Stderr, "\n→ %s\n", url)
+	fmt.Fprintf(os.Stderr, "\n-> %s\n", url)
 }
 
-// genesisHash returns a deterministic seal of the binary
 func genesisHash() string {
 	exe, _ := os.Executable()
 	data, err := os.ReadFile(exe)
@@ -134,58 +161,67 @@ func genesisHash() string {
 
 func (m model) View() string {
 	if m.width < 60 {
-		return "Window too small — please resize"
+		return asciiBanner + "\n[window too small — please resize]"
 	}
 
 	var b strings.Builder
 
-	// Animated ASCII dodecahedron
-	frames := []string{
-		"   ╭──────╮    ╭──────╮\n  ╱ ╲    ╱ ╲  ╱ ╲    ╱ ╲\n ╱   ╲  ╱   ╲╱   ╲  ╱   ╲\n╱     ╲╱     ╲     ╲╱     ╲\n╲     ╱╲     ╱     ╱╲     ╱\n ╲   ╱  ╲   ╱╲   ╱  ╲   ╱\n  ╲ ╱    ╲ ╱  ╲ ╱    ╲ ╱\n   ╰──────╯    ╰──────╯",
-		"   ╭──────╮    ╭──────╮\n  ╱ ╲    ╱ ╲  ╱    ╲  ╱ ╲\n ╱   ╲  ╱   ╲╱      ╲╱   ╲\n╱     ╲╱     ╲        ╲     ╲\n╲     ╱╲     ╱        ╱     ╱\n ╲   ╱  ╲   ╱╲      ╱╲   ╱\n  ╲ ╱    ╲ ╱  ╲    ╱  ╲ ╱\n   ╰──────╯    ╰──────╯",
-	}
-	frame := frames[m.frame%len(frames)]
-
-	b.WriteString(title.Render("🐋 headroom-eval"))
+	// ASCII animated dodecahedron
+	b.WriteString(title.Render("headroom-eval"))
 	b.WriteString(subtle.Render(fmt.Sprintf("  v%s  seal:%s", Version, genesisHash())))
 	b.WriteString("\n")
-	b.WriteString(subtle.Render(frame))
+	b.WriteString(subtle.Render(bannerFrames[m.frame%len(bannerFrames)]))
 	b.WriteString("\n")
 
-	// Steganographic layer — visible only with 's' key
+	// Steganography
 	if m.showStego {
-		b.WriteString(stegoArt)
+		stego := []string{
+			"  loopkit . kompress-v8 . iclr 2027",
+			"  the loop shipped. the paradox is proven.",
+			"  label quality is the bottleneck.",
+		}
+		for _, s := range stego {
+			b.WriteString(hidden.Render(s))
+			b.WriteString("\n")
+		}
 		b.WriteString("\n")
 	}
 
 	// Status
 	if m.err != "" {
-		b.WriteString(failure.Render(fmt.Sprintf("  ✗ %s", m.err)))
+		b.WriteString(failure.Render(fmt.Sprintf("  x %s", m.err)))
 	} else if m.ready {
-		icon, style := "✅", success
+		icon, style := "+", success
 		if strings.Contains(m.spaceStatus, "BUILD") || strings.Contains(m.spaceStatus, "build") {
-			icon, style = "🔨", subtle
+			icon, style = "#", subtle
 		} else if m.spaceStatus != "running" && m.spaceStatus != "RUNNING" {
-			icon, style = "⚠️", failure
+			icon, style = "!", failure
 		}
 		b.WriteString(style.Render(fmt.Sprintf("  %s Space: %s", icon, m.spaceStatus)))
 	} else {
-		b.WriteString(subtle.Render("  ⏳ connecting..."))
+		b.WriteString(subtle.Render("  ... connecting ..."))
 	}
 	b.WriteString("\n\n")
 
+	// Keys
 	k := func(s string) string { return lipgloss.NewStyle().Foreground(accent).Bold(true).Render(fmt.Sprintf("[%s]", s)) }
-	b.WriteString(subtle.Render("  keys:"))
-	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("  %s refresh  %s Space  %s paper  %s loopkit  %s stego  %s quit\n", k("r"), k("o"), k("p"), k("g"), k("s"), k("q")))
-	b.WriteString("\n")
-	b.WriteString(subtle.Render("  headroom eval · hill climbing loop · iclr 2027"))
+	links := []struct{ key, label string }{
+		{"r", "refresh"}, {"o", "Space"}, {"p", "paper"}, {"g", "loopkit"},
+		{"d", "donate"}, {"s", "stego"}, {"q", "quit"},
+	}
+	b.WriteString(subtle.Render("  keys: "))
+	for i, l := range links {
+		b.WriteString(k(l.key))
+		b.WriteString(l.label)
+		if i < len(links)-1 {
+			b.WriteString("  ")
+		}
+	}
 
 	return b.String()
 }
 
 func main() {
-	// CLI flags for non-TUI mode
 	sealFlag := flag.Bool("seal", false, "print genesis seal and exit")
 	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
@@ -201,7 +237,7 @@ func main() {
 
 	p := tea.NewProgram(model{}, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "whale: %v\n", err)
+		fmt.Fprintf(os.Stderr, "headroom-eval: %v\n", err)
 		os.Exit(1)
 	}
 }
