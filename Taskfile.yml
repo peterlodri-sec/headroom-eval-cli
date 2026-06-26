@@ -33,3 +33,9 @@ tasks:
     desc: Install locally
     cmds:
       - go install .
+
+  logs:
+    desc: Build headroom-logs binary
+    cmds:
+      - CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o headroom-logs ./cmd/logs/
+      - upx --best headroom-logs 2>/dev/null || true
