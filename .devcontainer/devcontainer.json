@@ -1,0 +1,20 @@
+   {
+     "name": "Headroom Eval + Full DX",
+     "image": "mcr.microsoft.com/devcontainers/python:3.14",
+     "features": {
+       "ghcr.io/devcontainers/features/git:1": {},
+       "ghcr.io/devcontainers/features/nix:1": {},
+       "ghcr.io/devcontainers/features/go:1": {},
+       "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+     },
+     "postCreateCommand": "bash .devcontainer/setup.sh",
+     "customizations": {
+       "vscode": {
+         "extensions": ["ms-python.python", "golang.go", "mkhl.direnv"]
+       }
+     },
+     "forwardPorts": [7860, 18721, 3000],
+     "containerEnv": {
+       "PYTHON_JIT": "1"
+     }
+   }
