@@ -222,9 +222,27 @@ func (m model) View() string {
 }
 
 func main() {
+	helpFlag := flag.Bool("help", false, "show help")
 	sealFlag := flag.Bool("seal", false, "print genesis seal and exit")
 	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *helpFlag {
+		fmt.Println("headroom-eval — interactive ASCII TUI")
+		fmt.Println("")
+		fmt.Println("Usage:")
+		fmt.Println("  headroom-eval              launch TUI")
+		fmt.Println("  headroom-eval --seal       print genesis hash")
+		fmt.Println("  headroom-eval --version    print version")
+		fmt.Println("  headroom-eval --help       this message")
+		fmt.Println("")
+		fmt.Println("TUI keys:")
+		fmt.Println("  r  refresh    o  Space    p  paper    g  loopkit")
+		fmt.Println("  d  donate     s  stego    q  quit")
+		fmt.Println("")
+		fmt.Println("Install: go install github.com/peterlodri-sec/headroom-eval-cli@latest")
+		return
+	}
 
 	if *sealFlag {
 		fmt.Printf("genesis: %s\nversion: %s\nbuilt:   %s\n", genesisHash(), Version, BuildTime)

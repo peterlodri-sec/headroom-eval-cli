@@ -1,0 +1,83 @@
+name: docs-sync
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 */6 * * *'  # every 6 hours
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      
+      - name: Build CLI
+        run: go build -o headroom-eval .
+      
+      - name: Update CLI README with --help
+        run: |
+          HELP=$(./headroom-eval --help 2>&1 || true)
+          cat > README.md << 'REOF'
+      # 🐋 headroom-eval-cli
+
+      Interactive pure-ASCII TUI for the Headroom Eval Space.
+      Live status, animated ASCII dodecahedron, steganography, genesis seal.
+
+      ## Install
+
+      ```bash
+      go install github.com/peterlodri-sec/headroom-eval-cli@latest
+      headroom-eval
+      ```
+
+      ## Keys
+
+      | Key | Action |
+      |---|---|
+      | `r` | Refresh Space status |
+      | `o` | Open Space in browser |
+      | `p` | Open paper |
+      | `g` | Open LoopKit |
+      | `d` | Sponsor |
+      | `s` | Toggle steganography |
+      | `q` | Quit |
+
+      ## Flags
+
+      ```
+      REOF
+          ./headroom-eval --help 2>&1 >> README.md || true
+          cat >> README.md << 'REOF'
+      ```
+
+      ## Log Viewer
+
+      ```bash
+      go install github.com/peterlodri-sec/headroom-eval-cli/cmd/logs@latest
+      headroom-logs -f                    # follow live
+      headroom-logs -mode build           # build logs
+      headroom-logs | grep ERROR          # pipe-safe
+      ```
+
+      ## Links
+
+      - [Headroom Eval Space](https://huggingface.co/spaces/PeetPedro/headroom-eval)
+      - [kompress paper](https://kompress.vaked.dev)
+      - [LoopKit](https://github.com/peterlodri-sec/loopkit)
+      - [pocoo.vaked.dev](https://pocoo.vaked.dev)
+      - [Sponsor](https://github.com/sponsors/peterlodri-sec)
+      REOF
+      
+      - name: Commit changes
+        run: |
+          git config user.name "docs-bot"
+          git config user.email "bot@loopkit.dev"
+          git add README.md
+          git diff --staged --quiet || git commit -m "docs: auto-update README with --help output"
+          git push
