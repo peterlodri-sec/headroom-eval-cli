@@ -137,7 +137,8 @@ func main() {
 }
 
 func signalPIPE() {
-	// On SIGPIPE, just exit 0 — Unix convention for pipe chains
+	// On SIGPIPE, just exit 0 — Unix convention for pipe chains.
+	// This goroutine is intentionally long-lived for the process lifetime.
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGPIPE)
 	go func() {
