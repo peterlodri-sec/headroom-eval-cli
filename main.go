@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -9,6 +10,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -28,7 +31,6 @@ var (
 	hidden  = lipgloss.NewStyle().Foreground(lipgloss.Color("#0a0a12"))
 
 	Version   = "dev"
-	Seal      = "genesis"
 	BuildTime = "unknown"
 )
 
@@ -85,7 +87,13 @@ type statusMsg struct {
 }
 
 func fetchSpace() tea.Msg {
-	resp, err := http.Get("https://huggingface.co/api/spaces/PeetPedro/headroom-eval")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://huggingface.co/api/spaces/PeetPedro/headroom-eval", nil)
+	if err != nil {
+		return statusMsg{err: err}
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return statusMsg{err: err}
 	}
@@ -146,7 +154,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func openURL(url string) {
-	fmt.Fprintf(os.Stderr, "\n-> %s\n", url)
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "\n-> %s\n", url)
+	}
 }
 
 func genesisHash() string {

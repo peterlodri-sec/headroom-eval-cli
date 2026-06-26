@@ -2,12 +2,15 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 )
 
 var (
@@ -66,7 +69,9 @@ func main() {
 	}
 
 	url := fmt.Sprintf("https://huggingface.co/api/spaces/%s/logs/%s", *space, *mode)
-	req, err := http.NewRequest("GET", url, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "headroom-logs: %v\n", err)
 		os.Exit(1)
@@ -132,7 +137,14 @@ func main() {
 }
 
 func signalPIPE() {
-	// On SIGPIPE, just exit 0 — Unix convention for pipe chains
+	// On SIGPIPE, just exit 0 — Unix convention for pipe chains.
+	// This goroutine is intentionally long-lived for the process lifetime.
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGPIPE)
+	go func() {
+		<-ch
+		os.Exit(0)
+	}()
 }
 
 func isPipeError(err error) bool {
@@ -142,6 +154,3 @@ func isPipeError(err error) bool {
 	s := err.Error()
 	return strings.Contains(s, "broken pipe") || strings.Contains(s, "write /dev/stdout")
 }
-
-// Ensure io import
-var _ io.Reader
