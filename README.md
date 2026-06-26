@@ -1,3 +1,5 @@
+<p align="center"><a href="https://pocoo.vaked.dev"><img src="https://pocoo.vaked.dev/assets/logo.svg" width="64" alt="pocoo.vaked.dev"/></a></p>
+
 # 🐋 headroom-eval-cli
 
 Interactive pure-ASCII TUI for the [Headroom Eval Space](https://huggingface.co/spaces/PeetPedro/headroom-eval).
