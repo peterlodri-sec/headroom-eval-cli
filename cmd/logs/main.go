@@ -4,46 +4,87 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
 )
 
 var (
-	green  = "\033[32m"
-	red    = "\033[31m"
-	yellow = "\033[33m"
-	cyan   = "\033[36m"
-	dim    = "\033[2m"
-	reset  = "\033[0m"
+	green  string
+	red    string
+	yellow string
+	cyan   string
+	dim    string
+	reset  string
 )
 
+func initColors() {
+	// Unix conventions: no color if piped, NO_COLOR set, or TERM=dumb
+	color := true
+	if os.Getenv("NO_COLOR") != "" {
+		color = false
+	}
+	if os.Getenv("TERM") == "dumb" {
+		color = false
+	}
+	if fi, _ := os.Stdout.Stat(); (fi.Mode() & os.ModeCharDevice) == 0 {
+		color = false // piped — respect Unix conventions
+	}
+
+	if color {
+		green = "\033[32m"
+		red = "\033[31m"
+		yellow = "\033[33m"
+		cyan = "\033[36m"
+		dim = "\033[2m"
+	}
+	reset = "\033[0m"
+}
+
 func main() {
-	token := flag.String("token", os.Getenv("HF_TOKEN"), "HF API token")
-	space := flag.String("space", "PeetPedro/headroom-eval", "HF Space")
+	token := flag.String("token", os.Getenv("HF_TOKEN"), "HF API token ($HF_TOKEN)")
+	space := flag.String("space", "PeetPedro/headroom-eval", "HF Space (owner/name)")
 	mode := flag.String("mode", "run", "run or build")
 	follow := flag.Bool("f", false, "follow (stream)")
-	filter := flag.String("filter", "", "filter lines containing this string")
+	filter := flag.String("filter", "", "filter lines containing STR")
+	colorFlag := flag.Bool("color", false, "force color (overrides auto-detect)")
 	flag.Parse()
 
+	initColors()
+	if *colorFlag {
+		green = "\033[32m"
+		red = "\033[31m"
+		yellow = "\033[33m"
+		cyan = "\033[36m"
+		dim = "\033[2m"
+	}
+
 	if *token == "" {
-		fmt.Fprintln(os.Stderr, "set HF_TOKEN or use --token")
+		fmt.Fprintln(os.Stderr, "headroom-logs: HF_TOKEN not set. Use --token or export HF_TOKEN.")
 		os.Exit(1)
 	}
 
 	url := fmt.Sprintf("https://huggingface.co/api/spaces/%s/logs/%s", *space, *mode)
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "headroom-logs: %v\n", err)
+		os.Exit(1)
+	}
 	req.Header.Set("Authorization", "Bearer "+*token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%serror:%s %v\n", red, reset, err)
+		fmt.Fprintf(os.Stderr, "headroom-logs: %v\n", err)
 		os.Exit(1)
 	}
 	defer resp.Body.Close()
 
+	// Handle SIGPIPE gracefully — Unix expectation
+	signalPIPE()
+
 	scanner := bufio.NewScanner(resp.Body)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // 1MB buffer
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -52,26 +93,55 @@ func main() {
 			continue
 		}
 
-		// Colorize
+		// Colorize only if terminal
+		c := ""
 		switch {
-		case strings.Contains(line, "ERROR") || strings.Contains(line, "Traceback") || strings.Contains(line, "FAILED"):
-			fmt.Println(red + line + reset)
+		case strings.Contains(line, "ERROR") || strings.Contains(line, "Traceback") || strings.Contains(line, "FAILED") || strings.Contains(line, "ModuleNotFoundError"):
+			c = red
 		case strings.Contains(line, "WARNING") || strings.Contains(line, "WARN"):
-			fmt.Println(yellow + line + reset)
-		case strings.Contains(line, "INFO") || strings.Contains(line, "success") || strings.Contains(line, "complete"):
-			fmt.Println(green + line + reset)
-		case strings.Contains(line, "===") || strings.Contains(line, "Starting") || strings.Contains(line, "Running"):
-			fmt.Println(cyan + line + reset)
+			c = yellow
+		case strings.Contains(line, "INFO") || strings.Contains(line, "successfully") || strings.Contains(line, "complete"):
+			c = green
+		case strings.Contains(line, "===") || strings.Contains(line, "Starting") || strings.Contains(line, "Running") || strings.Contains(line, "Building"):
+			c = cyan
 		default:
-			fmt.Println(dim + line + reset)
+			if !*colorFlag {
+				c = "" // no dim in pipe mode
+			} else {
+				c = dim
+			}
+		}
+
+		if c != "" {
+			fmt.Print(c + line + reset + "\n")
+		} else {
+			fmt.Println(line)
 		}
 
 		if !*follow {
-			break // one-shot if not following
+			break
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "%serror:%s %v\n", red, reset, err)
+		// SIGPIPE is expected when piped to head/tail — don't error
+		if !isPipeError(err) {
+			fmt.Fprintf(os.Stderr, "headroom-logs: %v\n", err)
+		}
 	}
 }
+
+func signalPIPE() {
+	// On SIGPIPE, just exit 0 — Unix convention for pipe chains
+}
+
+func isPipeError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "broken pipe") || strings.Contains(s, "write /dev/stdout")
+}
+
+// Ensure io import
+var _ io.Reader
