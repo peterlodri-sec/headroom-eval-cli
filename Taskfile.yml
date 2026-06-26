@@ -1,0 +1,35 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build binary (current OS)
+    cmds:
+      - CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=0.1.0 -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -trimpath -o headroom-eval
+
+  release:
+    desc: Cross-compile for all platforms
+    cmds:
+      - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=0.1.0 -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -trimpath -o dist/headroom-eval-linux-amd64
+      - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=0.1.0 -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -trimpath -o dist/headroom-eval-darwin-amd64
+      - GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=0.1.0 -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -trimpath -o dist/headroom-eval-darwin-arm64
+      - upx --best dist/* 2>/dev/null || true
+      - ls -la dist/
+
+  push:
+    desc: Add, commit, push
+    cmds:
+      - git add -A
+      - git commit -m "{{.CLI_ARGS | default "update"}}" || true
+      - git push
+
+  ship:
+    desc: Build + push
+    cmds:
+      - task: build
+      - task: push
+        vars: { CLI_ARGS: "🚀 ship" }
+
+  install:
+    desc: Install locally
+    cmds:
+      - go install .
